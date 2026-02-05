@@ -2,10 +2,13 @@ import React, { useState } from "react";
 import SecuritySidebar from "../components/SecuritySidebar";
 import Header from "../components/Header";
 import Button from "../components/Button";
-import { Search, Download } from "lucide-react";
+import { Search, Download, Calendar as CalendarIcon } from "lucide-react";
 
 const SecurityVisitorLogs = () => {
   const [activeFilter, setActiveFilter] = useState("All");
+  /* New State for Date Filters */
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const filters = [
     "All",
@@ -44,19 +47,47 @@ const SecurityVisitorLogs = () => {
 
           {/* 🔍 Search & Filters */}
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
-            <div className="flex flex-wrap gap-4 items-center">
-              {/* Search */}
-              <div className="relative w-full lg:max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search by name, company, or purpose..."
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                />
+            <div className="flex flex-col gap-4">
+              
+              {/* Top Row: Search and Date Selectors */}
+              <div className="flex flex-wrap gap-4 items-center">
+                {/* Search */}
+                <div className="relative flex-1 min-w-[300px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Search by name, company, or purpose..."
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                  />
+                </div>
+
+                {/* Date Filter Range */}
+                <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200">
+                  <div className="flex items-center px-2 gap-2">
+                    <CalendarIcon className="w-4 h-4 text-gray-500" />
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">From</span>
+                    <input 
+                      type="date" 
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="bg-transparent text-sm outline-none text-gray-700 cursor-pointer"
+                    />
+                  </div>
+                  <div className="h-5 w-[1px] bg-gray-300 mx-1"></div>
+                  <div className="flex items-center px-2 gap-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">To</span>
+                    <input 
+                      type="date" 
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="bg-transparent text-sm outline-none text-gray-700 cursor-pointer"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Filters */}
-              <div className="flex gap-2 flex-wrap">
+              {/* Bottom Row: Status Tabs */}
+              <div className="flex gap-2 flex-wrap border-t border-gray-50 pt-3">
                 {filters.map((filter) => (
                   <button
                     key={filter}
@@ -105,15 +136,18 @@ const SecurityVisitorLogs = () => {
                 </thead>
 
                 <tbody>
-                  {logs.length === 0 && (
+                  {logs.length === 0 ? (
                     <tr>
                       <td
                         colSpan="7"
                         className="px-6 py-16 text-center text-gray-500"
                       >
-                        No visitor logs available
+                        No visitor logs available for this period
                       </td>
                     </tr>
+                  ) : (
+                    /* This is where you'll map your logs once you have data */
+                    null
                   )}
                 </tbody>
               </table>

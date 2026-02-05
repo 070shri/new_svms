@@ -10,7 +10,7 @@ import {
   Building, 
   Calendar,
   Clock,
-  Upload,
+  Camera, // Swapped Upload for Camera
   CheckCircle,
   ArrowLeft,
   ArrowRight,
@@ -255,13 +255,13 @@ const RegisterVisitor = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Visitor Photo
                     </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 hover:bg-gray-50 transition-all cursor-pointer group">
                       <div className="flex flex-col items-center">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                          <Upload className="w-8 h-8 text-gray-400" />
+                        <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                          <Camera className="w-8 h-8 text-blue-500" />
                         </div>
-                        <p className="text-sm font-medium text-gray-900 mb-1">Upload Photo</p>
-                        <p className="text-xs text-gray-500">JPG, PNG up to 5MB. Photo is optional.</p>
+                        <p className="text-sm font-medium text-gray-900 mb-1">Take Visitor Photo</p>
+                        <p className="text-xs text-gray-500">Use webcam to capture image. Photo is optional.</p>
                       </div>
                     </div>
                   </div>

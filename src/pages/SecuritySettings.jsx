@@ -45,12 +45,12 @@ const SecuritySettings = () => {
       description: 'Update your password',
       color: 'text-orange-600'
     },
-    {
+    /*{
       icon: Shield,
       title: 'Two-Factor Auth',
       description: 'Add extra security',
       color: 'text-red-600'
-    }
+    }*/
   ];
 
   return (

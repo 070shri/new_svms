@@ -19,9 +19,7 @@ const RoleSelection = () => {
       navigate("/security-dashboard", { replace: true });
     }
 
-    if (role === "employee") {
-      navigate("/employee-dashboard", { replace: true });
-    }
+    
   }, [isAuthenticated, role, navigate]);
 
   const roles = [
@@ -39,13 +37,7 @@ const RoleSelection = () => {
       description: "Manage visitor check-ins and access",
       color: "bg-green-500",
     },
-    {
-      id: "employee",
-      icon: Users,
-      title: "Employee",
-      description: "Host visitors and manage requests",
-      color: "bg-purple-500",
-    },
+    
   ];
 
   // ✅ FIXED ROUTING

@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import Button from "../components/Button";
-import { Search, Download, Eye } from "lucide-react";
+import { Search, Download, Eye, Calendar as CalendarIcon } from "lucide-react";
 
 const VisitorLogs = () => {
   const [activeFilter, setActiveFilter] = useState("All");
+  /* New State for Date Filters */
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  /* ================= DATA (EMPTY FOR NOW) ================= */
   const filters = [
     "All",
     "Checked In",
@@ -17,7 +19,7 @@ const VisitorLogs = () => {
     "Rejected",
   ];
 
-  const logs = [];
+  const logs = []; // Keep empty as requested
 
   const getStatusColor = (status) => {
     const colors = {
@@ -44,17 +46,46 @@ const VisitorLogs = () => {
 
           {/* ================= SEARCH & FILTERS ================= */}
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex-1 min-w-[300px] relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search by name, company, or purpose..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-                />
+            <div className="flex flex-col gap-4">
+              
+              {/* Top Row: Search and Date Pickers */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex-1 min-w-[300px] relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Search by name, company, or purpose..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Date Filter Inputs */}
+                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
+                  <div className="flex items-center px-2 py-1 gap-2">
+                    <CalendarIcon className="w-4 h-4 text-gray-500" />
+                    <span className="text-xs font-semibold text-gray-400 uppercase">From:</span>
+                    <input 
+                      type="date" 
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="bg-transparent text-sm outline-none text-gray-700 cursor-pointer"
+                    />
+                  </div>
+                  <div className="h-6 w-[1px] bg-gray-300"></div>
+                  <div className="flex items-center px-2 py-1 gap-2">
+                    <span className="text-xs font-semibold text-gray-400 uppercase">To:</span>
+                    <input 
+                      type="date" 
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="bg-transparent text-sm outline-none text-gray-700 cursor-pointer"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="flex gap-2 flex-wrap">
+              {/* Bottom Row: Status Tabs */}
+              <div className="flex gap-2 flex-wrap border-t border-gray-50 pt-3">
                 {filters.map((filter) => (
                   <button
                     key={filter}
@@ -78,82 +109,46 @@ const VisitorLogs = () => {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Visitor
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Purpose
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Host
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Entry Time
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Exit Time
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Actions
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Visitor</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Purpose</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Host</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Entry Time</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Exit Time</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
 
                 <tbody className="divide-y divide-gray-200">
                   {logs.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan="7"
-                        className="px-6 py-10 text-center text-gray-500"
-                      >
-                        No visitor logs available
+                      <td colSpan="7" className="px-6 py-10 text-center text-gray-500">
+                        No visitor logs available for the selected dates.
                       </td>
                     </tr>
                   ) : (
                     logs.map((log) => (
-                      <tr
-                        key={log.id}
-                        className="hover:bg-gray-50 transition-colors"
-                      >
+                      <tr key={log.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">
                               {log.initials}
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">
-                                {log.name}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {log.company}
-                              </p>
+                              <p className="font-medium text-gray-900">{log.name}</p>
+                              <p className="text-sm text-gray-600">{log.company}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm">
-                          {log.purpose}
-                        </td>
+                        <td className="px-6 py-4 text-sm">{log.purpose}</td>
                         <td className="px-6 py-4">
                           <p className="text-sm">{log.host}</p>
-                          <p className="text-xs text-gray-600">
-                            {log.department}
-                          </p>
+                          <p className="text-xs text-gray-600">{log.department}</p>
                         </td>
-                        <td className="px-6 py-4 text-sm">
-                          {log.entryTime}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          {log.exitTime}
-                        </td>
+                        <td className="px-6 py-4 text-sm">{log.entryTime}</td>
+                        <td className="px-6 py-4 text-sm">{log.exitTime}</td>
                         <td className="px-6 py-4">
-                          <span
-                            className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
-                              log.status
-                            )}`}
-                          >
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(log.status)}`}>
                             {log.status}
                           </span>
                         </td>
