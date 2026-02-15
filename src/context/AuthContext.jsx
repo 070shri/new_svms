@@ -1,61 +1,46 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-} from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [role, setRole] = useState(null); // administrator | security | employee
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Load auth state from localStorage on app load
   useEffect(() => {
+    const storedUser = localStorage.getItem("user");
     const storedAuth = localStorage.getItem("isAuthenticated");
-    const storedRole = localStorage.getItem("role");
 
-    if (storedAuth === "true" && storedRole) {
+    if (storedAuth === "true" && storedUser) {
+      setUser(JSON.parse(storedUser));
       setIsAuthenticated(true);
-      setRole(storedRole);
-    } else {
-      setIsAuthenticated(false);
-      setRole(null);
     }
-
     setLoading(false);
   }, []);
 
-  // 🔹 Login
-  const login = (selectedRole) => {
+  const login = (userData) => {
+    // userData from backend includes { fullName, role, email }
+    setUser(userData);
     setIsAuthenticated(true);
-    setRole(selectedRole);
-
+    localStorage.setItem("user", JSON.stringify(userData));
     localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("role", selectedRole);
   };
 
-  // 🔹 Logout
   const logout = () => {
+    setUser(null);
     setIsAuthenticated(false);
-    setRole(null);
-
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("role");
+    localStorage.clear();
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated,
-        role,
-        loading,
-        login,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      user, 
+      role: user?.role, // This will be "Admin", "Security", or "Employee"
+      loading, 
+      login, 
+      logout 
+    }}>
       {children}
     </AuthContext.Provider>
   );

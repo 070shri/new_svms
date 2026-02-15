@@ -1,20 +1,50 @@
+using Swagger = Microsoft.OpenApi.Models;
+using SVMS.Api.Services;
+using System.Text.Json;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add CORS Policy
-builder.Services.AddCors(options => {
-    options.AddPolicy("AllowReactApp",
-        policy => policy.WithOrigins("http://localhost:5173") // Your Vite Port
-                        .AllowAnyMethod()
-                        .AllowAnyHeader());
+// Controllers with JSON formatting fix
+builder.Services.AddControllers()
+    .AddJsonOptions(options => {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Swagger.OpenApiInfo { Title = "SVMS API", Version = "v1" });
 });
 
-builder.Services.AddControllers();
-// Add your MongoDB Services here...
+builder.Services.Configure<SVMS.Api.Models.MongoDbSettings>(
+    builder.Configuration.GetSection("MongoDbSettings"));
+
+// REGISTER SERVICES
 builder.Services.AddSingleton<VisitorService>();
+// NEW: Registering the AuthService for hardcoded credential validation
+builder.Services.AddSingleton<AuthService>(); 
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 var app = builder.Build();
 
-app.UseCors("AllowReactApp");
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseCors("AllowFrontend");
 app.UseAuthorization();
 app.MapControllers();
+app.MapGet("/", () => "SVMS Backend is Running!");
+
 app.Run();

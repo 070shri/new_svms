@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import RoleSelection from "./pages/RoleSelection";
 import Login from "./pages/Login";
 import EmployeeLogin from "./pages/EmployeeLogin";
+import SecurityLogin from "./pages/SecurityLogin";
 
 /* ================= ADMIN ================= */
 import Dashboard from "./pages/Dashboard";
@@ -38,15 +39,22 @@ import EmployeeSettings from "./pages/EmployeeSettings";
 const RootRedirect = () => {
   const { isAuthenticated, role, loading } = useAuth();
 
-  if (loading) return null;
+  // Prevent redirect logic during initial auth load
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    </div>
+  );
 
   if (!isAuthenticated) return <Navigate to="/role-selection" replace />;
 
-  if (role === "administrator") return <Navigate to="/dashboard" replace />;
-  if (role === "security") return <Navigate to="/security-dashboard" replace />;
-  if (role === "employee") return <Navigate to="/employee-dashboard" replace />;
-
-  return <Navigate to="/role-selection" replace />;
+  // Roles must match Backend casing (Admin, Security, Employee)
+  switch (role) {
+    case "Admin": return <Navigate to="/dashboard" replace />;
+    case "Security": return <Navigate to="/security-dashboard" replace />;
+    case "Employee": return <Navigate to="/employee-dashboard" replace />;
+    default: return <Navigate to="/role-selection" replace />;
+  }
 };
 
 /* ================= PROTECTED ROUTE ================= */
@@ -55,7 +63,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (loading) return null;
   if (!isAuthenticated) return <Navigate to="/role-selection" replace />;
-  if (!allowedRoles.includes(role)) return <Navigate to="/" replace />;
+  
+  // Use .includes to check if the current user role is authorized
+  if (!allowedRoles.includes(role)) {
+    return <Navigate to="/role-selection" replace />;
+  }
 
   return children;
 };
@@ -64,147 +76,117 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* ROOT */}
+      {/* PUBLIC AUTH ROUTES */}
       <Route path="/" element={<RootRedirect />} />
-
-      {/* AUTH */}
       <Route path="/role-selection" element={<RoleSelection />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/security-login" element={<SecurityLogin />} />
       <Route path="/employee-login" element={<EmployeeLogin />} />
 
-      {/* ADMIN */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={["administrator"]}>
+      {/* ADMIN DASHBOARD - Protected by "Admin" */}
+      <Route path="/dashboard" element={
+          <ProtectedRoute allowedRoles={["Admin"]}>
             <Dashboard />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/register-visitor"
-        element={
-          <ProtectedRoute allowedRoles={["administrator"]}>
+      <Route path="/register-visitor" element={
+          <ProtectedRoute allowedRoles={["Admin"]}>
             <RegisterVisitor />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/active-visitors"
-        element={
-          <ProtectedRoute allowedRoles={["administrator"]}>
+      <Route path="/active-visitors" element={
+          <ProtectedRoute allowedRoles={["Admin"]}>
             <ActiveVisitors />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/visitor-logs"
-        element={
-          <ProtectedRoute allowedRoles={["administrator"]}>
+      <Route path="/visitor-logs" element={
+          <ProtectedRoute allowedRoles={["Admin"]}>
             <VisitorLogs />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/admin-notifications"
-        element={
-          <ProtectedRoute allowedRoles={["administrator"]}>
+      <Route path="/admin-notifications" element={
+          <ProtectedRoute allowedRoles={["Admin"]}>
             <AdminNotifications />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/security-alerts"
-        element={
-          <ProtectedRoute allowedRoles={["administrator"]}>
+      <Route path="/security-alerts" element={
+          <ProtectedRoute allowedRoles={["Admin"]}>
             <SecurityAlerts />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute allowedRoles={["administrator"]}>
+      <Route path="/settings" element={
+          <ProtectedRoute allowedRoles={["Admin"]}>
             <Settings />
           </ProtectedRoute>
         }
       />
 
-      {/* SECURITY */}
-      <Route
-        path="/security-dashboard"
-        element={
-          <ProtectedRoute allowedRoles={["security"]}>
+      {/* SECURITY DASHBOARD - Protected by "Security" */}
+      <Route path="/security-dashboard" element={
+          <ProtectedRoute allowedRoles={["Security"]}>
             <SecurityDashboard />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/security-register-visitor"
-        element={
-          <ProtectedRoute allowedRoles={["security"]}>
+      <Route path="/security-register-visitor" element={
+          <ProtectedRoute allowedRoles={["Security"]}>
             <SecurityRegisterVisitor />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/security-active-visitors"
-        element={
-          <ProtectedRoute allowedRoles={["security"]}>
+      <Route path="/security-active-visitors" element={
+          <ProtectedRoute allowedRoles={["Security"]}>
             <SecurityActiveVisitors />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/security-visitor-logs"
-        element={
-          <ProtectedRoute allowedRoles={["security"]}>
+      <Route path="/security-visitor-logs" element={
+          <ProtectedRoute allowedRoles={["Security"]}>
             <SecurityVisitorLogs />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/security-notifications"
-        element={
-          <ProtectedRoute allowedRoles={["security"]}>
+      <Route path="/security-notifications" element={
+          <ProtectedRoute allowedRoles={["Security"]}>
             <SecurityNotifications />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/security-settings"
-        element={
-          <ProtectedRoute allowedRoles={["security"]}>
+      <Route path="/security-settings" element={
+          <ProtectedRoute allowedRoles={["Security"]}>
             <SecuritySettings />
           </ProtectedRoute>
         }
       />
 
-      {/* EMPLOYEE */}
-      <Route
-        path="/employee-dashboard"
-        element={
-          <ProtectedRoute allowedRoles={["employee"]}>
+      {/* EMPLOYEE DASHBOARD - Protected by "Employee" */}
+      <Route path="/employee-dashboard" element={
+          <ProtectedRoute allowedRoles={["Employee"]}>
             <EmployeeDashboard />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/employee-visitor-logs"
-        element={
-          <ProtectedRoute allowedRoles={["employee"]}>
+      <Route path="/employee-visitor-logs" element={
+          <ProtectedRoute allowedRoles={["Employee"]}>
             <EmployeeLogs />
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/employee-settings"
-        element={
-          <ProtectedRoute allowedRoles={["employee"]}>
+      <Route path="/employee-settings" element={
+          <ProtectedRoute allowedRoles={["Employee"]}>
             <EmployeeSettings />
           </ProtectedRoute>
         }
       />
+
+      {/* FALLBACK */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };

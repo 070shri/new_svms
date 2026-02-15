@@ -1,96 +1,83 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { Shield, Lock, User } from "lucide-react";
+import Input from "../components/Input";
+import Button from "../components/Button";
 
 const SecurityLogin = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    try {
+      const response = await fetch("http://localhost:5260/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, role: "Security" }), // Matches AuthService.cs
+      });
 
-    // ✅ ALWAYS set role explicitly
-    login("security");
-
-    // ✅ use replace to avoid going back to role-selection
-    navigate("/security-dashboard", { replace: true });
+      if (response.ok) {
+        const userData = await response.json();
+        login(userData);
+        // Successful login redirects to security dashboard
+        navigate("/SecurityDashboard", { replace: true });
+      } else {
+        const error = await response.json();
+        alert(error.message || "Security access denied.");
+      }
+    } catch (err) {
+      alert("Backend is not responding. Ensure SVMS.API is running.");
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-sm p-10">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-10 w-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white text-lg">
-            🏢
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-10 border border-slate-200">
+        <div className="text-center mb-8">
+          <div className="mx-auto h-16 w-16 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg mb-4">
+            <Shield className="w-8 h-8" />
           </div>
-          <div>
-            <h1 className="text-lg font-semibold">Visitor Management</h1>
-            <p className="text-xs text-gray-500">
-              Secure access control system
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold text-slate-800">Security Portal</h1>
+          <p className="text-sm text-slate-500">Gate & Visitor Management Access</p>
         </div>
 
-        {/* ✅ Back button must navigate */}
-        <button
-          type="button"
-          onClick={() => navigate("/", { replace: true })}
-          className="flex items-center gap-1 text-xs text-gray-500 mb-5"
-        >
-          <span>←</span>
-          <span>Back to roles</span>
-        </button>
-
-        <div className="flex items-center gap-3 mb-6 rounded-2xl bg-slate-50 px-4 py-3">
-          <div className="h-9 w-9 rounded-full bg-emerald-600 flex items-center justify-center text-white text-sm">
-            🛡
-          </div>
-          <div>
-            <p className="text-xs font-medium">Security Personnel</p>
-            <p className="text-[11px] text-gray-500">
-              Signing in as security
-            </p>
-          </div>
-        </div>
-
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-600">
-              Email
-            </label>
-            <input
-              type="email"
-              defaultValue="michael.chen@company.com"
-              className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-600">
-              Password
-            </label>
-            <input
-              type="password"
-              placeholder="Enter your password"
-              className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="w-full h-11 rounded-2xl bg-blue-600 text-white text-sm font-medium mt-2"
+        <form className="space-y-5" onSubmit={handleSubmit}>
+          <Input 
+            label="Security Email" 
+            type="email" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            icon={User} 
+            required 
+            placeholder="gate01@svms.io"
+          />
+          <Input 
+            label="Secure Password" 
+            type="password" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            icon={Lock} 
+            required 
+            placeholder="••••••••"
+          />
+          <Button 
+            type="submit" 
+            className="w-full bg-emerald-600 hover:bg-emerald-700 h-12 text-lg font-semibold shadow-emerald-200"
           >
-            Sign In
-          </button>
-
-          <p className="text-[11px] text-center text-gray-400 mt-2">
-            Demo: Enter any password to continue.
-          </p>
+            Authenticate
+          </Button>
         </form>
 
-        <p className="mt-6 text-[11px] text-center text-gray-400">
-          © 2024 Smart VMS. All rights reserved.
-        </p>
+        <button 
+          onClick={() => navigate("/role-selection")}
+          className="w-full mt-6 text-sm text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          ← Back to Role Selection
+        </button>
       </div>
     </div>
   );
