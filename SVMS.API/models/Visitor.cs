@@ -44,14 +44,29 @@ namespace SVMS.Api.Models
         public string IdNumber { get; set; } = string.Empty;
 
         [BsonElement("photo")]
-        public string? Photo { get; set; } 
+        public string? Photo { get; set; }
 
+        // "Pending Approval" | "Approved" | "Rejected" | "Checked In" | "Checked Out"
         [BsonElement("status")]
         public string Status { get; set; } = "Pending Approval";
 
         [BsonElement("registeredBy")]
-        public string RegisteredBy { get; set; } = string.Empty; 
+        public string RegisteredBy { get; set; } = string.Empty;
 
+        [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // NEW: Check-in / Check-out tracking
+        [BsonElement("checkedInAt")]
+        public DateTime? CheckedInAt { get; set; }
+
+        [BsonElement("checkedOutAt")]
+        public DateTime? CheckedOutAt { get; set; }
+
+        // Who performed the approval/rejection (Admin or Employee email)
+        [BsonElement("actionBy")]
+        public string? ActionBy { get; set; }
     }
 }
+
+

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "3X8E6glWka4=",
+  "dgSpecHash": "fdv4HpJQLeE=",
   "success": true,
-  "projectFilePath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\SVMS.API\\SVMS.Api.csproj",
+  "projectFilePath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\svms.api\\SVMS.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\aseem\\.nuget\\packages\\dnsclient\\1.6.1\\dnsclient.1.6.1.nupkg.sha512",
     "C:\\Users\\aseem\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.5\\microsoft.aspnetcore.openapi.9.0.5.nupkg.sha512",

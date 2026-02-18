@@ -34,6 +34,8 @@ import SecuritySettings from "./pages/SecuritySettings";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeLogs from "./pages/EmployeeLogs";
 import EmployeeSettings from "./pages/EmployeeSettings";
+import EmployeeNotifications from "./pages/EmployeeNotification";
+
 
 /* ================= ROOT REDIRECT ================= */
 const RootRedirect = () => {
@@ -172,6 +174,11 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
+      <Route
+  path="/employee-notifications"
+  element={<EmployeeNotifications />}
+/>
+
       <Route path="/employee-visitor-logs" element={
           <ProtectedRoute allowedRoles={["Employee"]}>
             <EmployeeLogs />

@@ -20,9 +20,11 @@ builder.Services.Configure<SVMS.Api.Models.MongoDbSettings>(
     builder.Configuration.GetSection("MongoDbSettings"));
 
 // REGISTER SERVICES
+// NOTE: NotificationService must be registered BEFORE VisitorService
+// because VisitorService depends on NotificationService
+builder.Services.AddSingleton<NotificationService>();
 builder.Services.AddSingleton<VisitorService>();
-// NEW: Registering the AuthService for hardcoded credential validation
-builder.Services.AddSingleton<AuthService>(); 
+builder.Services.AddSingleton<AuthService>();
 
 builder.Services.AddCors(options =>
 {
