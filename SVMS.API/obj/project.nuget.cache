@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "fdv4HpJQLeE=",
+  "dgSpecHash": "3X8E6glWka4=",
   "success": true,
-  "projectFilePath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\svms.api\\SVMS.Api.csproj",
+  "projectFilePath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\SVMS.API\\SVMS.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\aseem\\.nuget\\packages\\dnsclient\\1.6.1\\dnsclient.1.6.1.nupkg.sha512",
     "C:\\Users\\aseem\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.5\\microsoft.aspnetcore.openapi.9.0.5.nupkg.sha512",
@@ -26,5 +26,15 @@
     "C:\\Users\\aseem\\.nuget\\packages\\system.security.principal.windows\\5.0.0\\system.security.principal.windows.5.0.0.nupkg.sha512",
     "C:\\Users\\aseem\\.nuget\\packages\\zstdsharp.port\\0.7.3\\zstdsharp.port.0.7.3.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1900",
+      "level": "Warning",
+      "message": "Error occurred while getting package vulnerability data: Unable to load the service index for source https://api.nuget.org/v3/index.json.",
+      "projectPath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\SVMS.API\\SVMS.Api.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\SVMS.API\\SVMS.Api.csproj",
+      "targetGraphs": []
+    }
+  ]
 }
