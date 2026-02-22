@@ -16,7 +16,6 @@ namespace SVMS.Api.Controllers
         }
 
         // POST /api/visitors/register
-        // Used by Security (status = Pending Approval) and Admin (status = Approved)
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] Visitor visitor)
         {
@@ -30,13 +29,11 @@ namespace SVMS.Api.Controllers
         }
 
         // GET /api/visitors
-        // Admin & Security see all visitors
         [HttpGet]
         public async Task<ActionResult<List<Visitor>>> GetAll() =>
             Ok(await _visitorService.GetAsync());
 
         // GET /api/visitors/host/{email}
-        // Employee sees only their own visitors
         [HttpGet("host/{email}")]
         public async Task<IActionResult> GetByHost(string email) =>
             Ok(await _visitorService.GetByHostEmailAsync(email));
@@ -47,22 +44,40 @@ namespace SVMS.Api.Controllers
             Ok(await _visitorService.GetDashboardStatsAsync());
 
         // PATCH /api/visitors/{id}/status
-        // Used by Employee (approve/reject their own visitor)
-        // Used by Admin (approve/reject any visitor)
-        // Body: { "status": "Approved", "actionBy": "employee@email.com" }
+        // SMART ROUTER: Handles generic status updates, plus Check-In/Check-Out redirects
         [HttpPatch("{id}/status")]
         public async Task<IActionResult> UpdateStatus(string id, [FromBody] StatusUpdateRequest update)
         {
-            var allowedStatuses = new[] { "Approved", "Rejected" };
+            if (update == null || string.IsNullOrEmpty(update.Status))
+                return BadRequest(new { message = "Status is required." });
+
+            // Automatically route to proper Check-In logic
+            if (update.Status == "Checked In")
+            {
+                var success = await _visitorService.CheckInAsync(id);
+                return success ? Ok(new { message = "Visitor checked in successfully." }) 
+                               : BadRequest(new { message = "Visitor must be approved to check in." });
+            }
+
+            // Automatically route to proper Check-Out logic
+            if (update.Status == "Checked Out")
+            {
+                var success = await _visitorService.CheckOutAsync(id);
+                return success ? Ok(new { message = "Visitor checked out successfully." }) 
+                               : BadRequest(new { message = "Visitor must be checked in to check out." });
+            }
+
+            // Standard Approval/Rejection logic
+            var allowedStatuses = new[] { "Approved", "Rejected", "Pending Approval" };
             if (!allowedStatuses.Contains(update.Status))
-                return BadRequest(new { message = "Status must be 'Approved' or 'Rejected'." });
+                return BadRequest(new { message = "Invalid status update." });
 
             await _visitorService.UpdateStatusAsync(id, update.Status, update.ActionBy);
             return Ok(new { message = $"Visitor status updated to {update.Status}." });
         }
 
         // PATCH /api/visitors/{id}/checkin
-        // Security ONLY — check in an approved visitor
+        // Dedicated endpoint
         [HttpPatch("{id}/checkin")]
         public async Task<IActionResult> CheckIn(string id)
         {
@@ -74,7 +89,7 @@ namespace SVMS.Api.Controllers
         }
 
         // PATCH /api/visitors/{id}/checkout
-        // Security ONLY — check out a checked-in visitor
+        // Dedicated endpoint
         [HttpPatch("{id}/checkout")]
         public async Task<IActionResult> CheckOut(string id)
         {
@@ -89,8 +104,6 @@ namespace SVMS.Api.Controllers
     public class StatusUpdateRequest
     {
         public string Status { get; set; } = string.Empty;
-
-        // The email of whoever performed this action (employee email or "Admin")
         public string ActionBy { get; set; } = string.Empty;
     }
 }

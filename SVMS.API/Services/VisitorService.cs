@@ -29,7 +29,7 @@ namespace SVMS.Api.Services
         {
             await _visitorsCollection.InsertOneAsync(newVisitor);
 
-            // Notify the host employee — one notification per visitor, no duplicates
+            // Notify the host employee
             if (newVisitor.Status == "Pending Approval" && !string.IsNullOrEmpty(newVisitor.HostEmail))
             {
                 await _notificationService.CreateIfNotExistsAsync(new Notification
@@ -49,8 +49,6 @@ namespace SVMS.Api.Services
         public async Task<List<Visitor>> GetByHostEmailAsync(string email) =>
             await _visitorsCollection.Find(x => x.HostEmail == email).ToListAsync();
 
-        // Update status — uses CreateIfNotExistsAsync so Security never gets
-        // the same approved/rejected notification twice for the same visitor
         public async Task UpdateStatusAsync(string id, string status, string actionBy = "")
         {
             var visitor = await GetByIdAsync(id);
@@ -93,7 +91,6 @@ namespace SVMS.Api.Services
             }
         }
 
-        // Security checks visitor IN — only if status is "Approved"
         public async Task<bool> CheckInAsync(string id)
         {
             var visitor = await GetByIdAsync(id);
@@ -108,7 +105,6 @@ namespace SVMS.Api.Services
             return true;
         }
 
-        // Security checks visitor OUT — only if status is "Checked In"
         public async Task<bool> CheckOutAsync(string id)
         {
             var visitor = await GetByIdAsync(id);

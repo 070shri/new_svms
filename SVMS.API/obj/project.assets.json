@@ -1059,23 +1059,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\aseem\\.nuget\\packages\\": {},
+    "C:\\Users\\Pranav\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\svms.api\\SVMS.Api.csproj",
+      "projectUniqueName": "C:\\Users\\Pranav\\Documents\\new_svms\\SVMS.API\\SVMS.Api.csproj",
       "projectName": "SVMS.Api",
-      "projectPath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\svms.api\\SVMS.Api.csproj",
-      "packagesPath": "C:\\Users\\aseem\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\svms.api\\obj\\",
+      "projectPath": "C:\\Users\\Pranav\\Documents\\new_svms\\SVMS.API\\SVMS.Api.csproj",
+      "packagesPath": "C:\\Users\\Pranav\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Pranav\\Documents\\new_svms\\SVMS.API\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\aseem\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Pranav\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],

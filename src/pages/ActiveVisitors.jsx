@@ -17,6 +17,7 @@ const ActiveVisitors = () => {
       const res = await fetch("http://localhost:5260/api/visitors");
       if (res.ok) {
         const data = await res.json();
+        // Shows only visitors who are physically inside the building
         setVisitors(data.filter((v) => v.status === "Checked In"));
       }
     } catch (err) {
@@ -38,10 +39,16 @@ const ActiveVisitors = () => {
   const handleCheckOut = async (visitorId) => {
     setCheckingOut(visitorId);
     try {
+      // 🚨 FIX: Replaced /checkout with /status and added the JSON body 🚨
       const res = await fetch(
-        `http://localhost:5260/api/visitors/${visitorId}/checkout`,
-        { method: "PATCH" }
+        `http://localhost:5260/api/visitors/${visitorId}/status`,
+        { 
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "Checked Out" }) 
+        }
       );
+      
       if (res.ok) {
         setCheckedOut((prev) => ({ ...prev, [visitorId]: true }));
         setTimeout(() => {
@@ -186,7 +193,7 @@ const ActiveVisitors = () => {
               <div className="relative -mt-10 mb-4 flex justify-center">
                 {selectedVisitor.photo ? (
                   <img src={selectedVisitor.photo}
-                    className="w-20 h-20 rounded-2xl border-4 border-white object-cover shadow-lg" />
+                    className="w-20 h-20 rounded-2xl border-4 border-white object-cover shadow-lg" alt="visitor" />
                 ) : (
                   <div className="w-20 h-20 rounded-2xl border-4 border-white bg-blue-100 flex items-center justify-center shadow-lg">
                     <User className="w-8 h-8 text-blue-600" />
