@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import SecuritySidebar from "../components/SecuritySidebar";
 import Header from "../components/Header";
 import Button from "../components/Button";
 import Input from "../components/Input";
-import { 
-  User, Mail, Phone, Building, Calendar, Clock, 
-  Camera, CheckCircle, ArrowLeft, ArrowRight, CreditCard, 
-  Send, X, ChevronDown
+import {
+  User, Mail, Phone, Building, Calendar, Clock,
+  Camera, CheckCircle, ArrowLeft, ArrowRight, CreditCard,
+  Send, X, ChevronDown, Video
 } from 'lucide-react';
 
 const SecurityRegisterVisitor = () => {
@@ -16,6 +16,13 @@ const SecurityRegisterVisitor = () => {
     purpose: '', host: '', hostEmail: '',
     date: '', time: '', idType: '', idNumber: '', photo: null
   });
+
+  // Camera state
+  const [cameraActive, setCameraActive] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null); // For sending to backend
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
 
   // Employee dropdown state
   const [employees, setEmployees] = useState([]);
@@ -41,7 +48,7 @@ const SecurityRegisterVisitor = () => {
         const res = await fetch('http://localhost:5260/api/auth/employees');
         if (res.ok) {
           const data = await res.json();
-          setEmployees(data); // [{ fullName, email }]
+          setEmployees(data);
         }
       } catch (err) {
         console.error('Failed to fetch employees:', err);
@@ -52,24 +59,94 @@ const SecurityRegisterVisitor = () => {
     fetchEmployees();
   }, []);
 
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  // When employee is selected from dropdown, store both name and email
   const handleSelectEmployee = (emp) => {
     setFormData({ ...formData, host: emp.fullName, hostEmail: emp.email });
     setDropdownOpen(false);
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setFormData({ ...formData, photo: reader.result });
-      reader.readAsDataURL(file);
+  // ✅ Clean, standard camera start. Automatically picks the only available camera (your USB webcam)
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+
+      streamRef.current = stream;
+      setCameraActive(true);
+
+      // Wait a fraction of a second for React to render the video tag, then attach stream
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 100);
+
+    } catch (err) {
+      console.error('Camera access error:', err);
+      alert('Could not access camera. Please check browser permissions or ensure the USB webcam is plugged in.');
     }
+  };
+
+  // Capture photo from camera
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+
+    // Set canvas size to video size
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw video frame to canvas
+    // (Note: Even though the video is mirrored via CSS, the actual saved image is normal orientation!)
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Convert to base64 for UI display
+    const photoDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    setFormData({ ...formData, photo: photoDataUrl });
+
+    // Convert to File for backend upload
+    canvas.toBlob((blob) => {
+      const file = new File([blob], 'visitor_photo.jpg', { type: 'image/jpeg' });
+      setPhotoFile(file);
+    }, 'image/jpeg', 0.9);
+
+    // Stop camera
+    stopCamera();
+  };
+
+  // Stop camera
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  };
+
+  // Retake photo
+  const retakePhoto = () => {
+    setFormData({ ...formData, photo: null });
+    setPhotoFile(null);
   };
 
   const handleNext = () => { if (currentStep < 4) setCurrentStep(currentStep + 1); };
@@ -78,10 +155,33 @@ const SecurityRegisterVisitor = () => {
   const handleSubmitRequest = async () => {
     setSubmitting(true);
     try {
+      // Create FormData for file upload
+      const submitData = new FormData();
+      submitData.append('fullName', formData.fullName);
+      submitData.append('email', formData.email);
+      submitData.append('phone', formData.phone);
+      submitData.append('company', formData.company);
+      submitData.append('purpose', formData.purpose);
+      submitData.append('host', formData.host);
+      submitData.append('hostEmail', formData.hostEmail);
+      submitData.append('date', formData.date);
+      submitData.append('time', formData.time);
+      submitData.append('idType', formData.idType);
+      submitData.append('idNumber', formData.idNumber);
+      submitData.append('registeredBy', 'Security');
+
+      // Ensure photo is actually attached before sending
+      if (photoFile) {
+        submitData.append('photo', photoFile);
+      } else {
+        alert("A photo is required for AI Enrollment.");
+        setSubmitting(false);
+        return;
+      }
+
       const response = await fetch('http://localhost:5260/api/visitors/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, registeredBy: "Security" }),
+        body: submitData, // Sending as multipart/form-data
       });
 
       if (response.ok) {
@@ -92,10 +192,13 @@ const SecurityRegisterVisitor = () => {
           purpose: '', host: '', hostEmail: '',
           date: '', time: '', idType: '', idNumber: '', photo: null
         });
+        setPhotoFile(null);
       } else {
-        alert('Failed to register visitor.');
+        const errorData = await response.json();
+        alert(`Failed to register visitor: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
+      console.error('Registration error:', error);
       alert('Error connecting to backend!');
     } finally {
       setSubmitting(false);
@@ -113,13 +216,12 @@ const SecurityRegisterVisitor = () => {
           <div className="flex items-center justify-center gap-2 my-6">
             {steps.map((step, idx) => (
               <React.Fragment key={step.number}>
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                  currentStep === step.number
-                    ? 'bg-green-600 text-white'
-                    : currentStep > step.number
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${currentStep === step.number
+                  ? 'bg-green-600 text-white'
+                  : currentStep > step.number
                     ? 'bg-green-100 text-green-700'
                     : 'bg-gray-100 text-gray-500'
-                }`}>
+                  }`}>
                   <step.icon className="w-3.5 h-3.5" />
                   {step.title}
                 </div>
@@ -193,9 +295,8 @@ const SecurityRegisterVisitor = () => {
                               key={emp.email}
                               type="button"
                               onClick={() => handleSelectEmployee(emp)}
-                              className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-green-50 transition-colors text-left ${
-                                formData.hostEmail === emp.email ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-900'
-                              }`}
+                              className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-green-50 transition-colors text-left ${formData.hostEmail === emp.email ? 'bg-green-50 text-green-700 font-medium' : 'text-gray-900'
+                                }`}
                             >
                               <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-semibold text-xs flex-shrink-0">
                                 {emp.fullName.charAt(0).toUpperCase()}
@@ -222,7 +323,7 @@ const SecurityRegisterVisitor = () => {
               </div>
             )}
 
-            {/* STEP 3 - ID & Photo */}
+            {/* STEP 3 - ID & Photo with Live Camera */}
             {currentStep === 3 && (
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">ID Verification & Photo</h2>
@@ -242,24 +343,58 @@ const SecurityRegisterVisitor = () => {
 
                 <Input label="ID Number" name="idNumber" value={formData.idNumber} onChange={handleChange} icon={CreditCard} required />
 
+                {/* LIVE CAMERA CAPTURE */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Visitor Photo</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Visitor Photo <span className="text-red-500">*</span></label>
+
                   {!formData.photo ? (
-                    <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer block hover:border-green-400 transition-colors">
-                      <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                      <Camera className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                      <p className="text-sm font-medium text-gray-900">Click to Upload Photo</p>
-                      <p className="text-xs text-gray-500 mt-1">JPG, PNG up to 5MB</p>
-                    </label>
+                    <>
+                      {!cameraActive ? (
+                        // ✅ Changed to flexbox for perfect vertical and horizontal centering
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-10 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors">
+                          <Button onClick={startCamera} icon={Video} variant="primary" className="bg-blue-600 hover:bg-blue-700 text-white">
+                            Open Camera
+                          </Button>
+                          <p className="text-xs text-gray-500 mt-3 font-medium">Click to activate webcam</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="relative rounded-lg overflow-hidden bg-black shadow-inner">
+                            {/* ✅ Added transform -scale-x-100 to mirror the preview */}
+                            <video
+                              ref={videoRef}
+                              autoPlay
+                              playsInline
+                              className="w-full max-w-2xl mx-auto transform -scale-x-100"
+                            />
+                            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-3">
+                              <Button onClick={capturePhoto} icon={Camera} variant="success" className="bg-green-600 hover:bg-green-700 text-white shadow-lg">
+                                Capture Photo
+                              </Button>
+                              <Button onClick={stopCamera} icon={X} variant="secondary" className="bg-gray-600 hover:bg-gray-700 text-white shadow-lg">
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="relative inline-block">
-                      <img src={formData.photo} alt="Preview" className="rounded-lg w-full max-w-xs shadow-md border" />
-                      <button onClick={() => setFormData({ ...formData, photo: null })}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
-                        <X className="w-4 h-4" />
+                      {/* Note: the captured photo remains normal orientation (not mirrored) */}
+                      <img src={formData.photo} alt="Captured" className="rounded-lg w-full max-w-md shadow-md border-2 border-gray-200" />
+                      <button
+                        onClick={retakePhoto}
+                        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-md border-2 border-white transition-colors"
+                        title="Delete Photo"
+                      >
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
                   )}
+
+                  {/* Hidden canvas for photo capture */}
+                  <canvas ref={canvasRef} className="hidden" />
                 </div>
               </div>
             )}
@@ -291,12 +426,15 @@ const SecurityRegisterVisitor = () => {
                 {formData.photo && (
                   <div className="mt-4">
                     <p className="text-xs text-gray-500 font-medium mb-2">Photo</p>
-                    <img src={formData.photo} alt="Visitor" className="w-24 h-24 rounded-lg object-cover border" />
+                    <img src={formData.photo} alt="Visitor" className="w-32 h-32 rounded-lg object-cover border shadow-sm" />
                   </div>
                 )}
                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <p className="text-sm text-green-700">
                     ✓ A notification will be sent to <strong>{formData.host}</strong> to approve or reject this visitor.
+                  </p>
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ Face will be enrolled in AI system for automatic recognition
                   </p>
                 </div>
               </div>
@@ -308,8 +446,8 @@ const SecurityRegisterVisitor = () => {
               {currentStep < 4
                 ? <Button onClick={handleNext} icon={ArrowRight}>Continue</Button>
                 : <Button variant="success" onClick={handleSubmitRequest} disabled={submitting} icon={Send}>
-                    {submitting ? 'Submitting...' : 'Submit & Notify Host'}
-                  </Button>
+                  {submitting ? 'Submitting...' : 'Submit & Notify Host'}
+                </Button>
               }
             </div>
           </div>

@@ -21,7 +21,7 @@ import VisitorLogs from "./pages/VisitorLogs";
 import SecurityAlerts from "./pages/SecurityAlerts";
 import Settings from "./pages/Settings";
 import AdminNotifications from "./pages/AdminNotifications";
-
+import AdminCameraManagement from "./pages/AdminCameraManagement";
 /* ================= SECURITY ================= */
 import SecurityDashboard from "./pages/SecurityDashboard";
 import SecurityRegisterVisitor from "./pages/SecurityRegisterVisitor";
@@ -65,7 +65,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (loading) return null;
   if (!isAuthenticated) return <Navigate to="/role-selection" replace />;
-  
+
   // Use .includes to check if the current user role is authorized
   if (!allowedRoles.includes(role)) {
     return <Navigate to="/role-selection" replace />;
@@ -87,109 +87,115 @@ const AppRoutes = () => {
 
       {/* ADMIN DASHBOARD - Protected by "Admin" */}
       <Route path="/dashboard" element={
-          <ProtectedRoute allowedRoles={["Admin"]}>
-            <Dashboard />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Admin"]}>
+          <Dashboard />
+        </ProtectedRoute>
+      }
       />
       <Route path="/register-visitor" element={
-          <ProtectedRoute allowedRoles={["Admin"]}>
-            <RegisterVisitor />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Admin"]}>
+          <RegisterVisitor />
+        </ProtectedRoute>
+      }
       />
       <Route path="/active-visitors" element={
-          <ProtectedRoute allowedRoles={["Admin"]}>
-            <ActiveVisitors />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Admin"]}>
+          <ActiveVisitors />
+        </ProtectedRoute>
+      }
       />
       <Route path="/visitor-logs" element={
-          <ProtectedRoute allowedRoles={["Admin"]}>
-            <VisitorLogs />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Admin"]}>
+          <VisitorLogs />
+        </ProtectedRoute>
+      }
       />
       <Route path="/admin-notifications" element={
-          <ProtectedRoute allowedRoles={["Admin"]}>
-            <AdminNotifications />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Admin"]}>
+          <AdminNotifications />
+        </ProtectedRoute>
+      }
+      />
+      <Route path="/camera-management" element={
+        <ProtectedRoute allowedRoles={["Admin"]}>
+          <AdminCameraManagement />
+        </ProtectedRoute>
+      }
       />
       <Route path="/security-alerts" element={
-          <ProtectedRoute allowedRoles={["Admin"]}>
-            <SecurityAlerts />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Admin"]}>
+          <SecurityAlerts />
+        </ProtectedRoute>
+      }
       />
       <Route path="/settings" element={
-          <ProtectedRoute allowedRoles={["Admin"]}>
-            <Settings />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Admin"]}>
+          <Settings />
+        </ProtectedRoute>
+      }
       />
 
       {/* SECURITY DASHBOARD - Protected by "Security" */}
       <Route path="/security-dashboard" element={
-          <ProtectedRoute allowedRoles={["Security"]}>
-            <SecurityDashboard />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Security"]}>
+          <SecurityDashboard />
+        </ProtectedRoute>
+      }
       />
       <Route path="/security-register-visitor" element={
-          <ProtectedRoute allowedRoles={["Security"]}>
-            <SecurityRegisterVisitor />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Security"]}>
+          <SecurityRegisterVisitor />
+        </ProtectedRoute>
+      }
       />
       <Route path="/security-active-visitors" element={
-          <ProtectedRoute allowedRoles={["Security"]}>
-            <SecurityActiveVisitors />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Security"]}>
+          <SecurityActiveVisitors />
+        </ProtectedRoute>
+      }
       />
       <Route path="/security-visitor-logs" element={
-          <ProtectedRoute allowedRoles={["Security"]}>
-            <SecurityVisitorLogs />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Security"]}>
+          <SecurityVisitorLogs />
+        </ProtectedRoute>
+      }
       />
       <Route path="/security-notifications" element={
-          <ProtectedRoute allowedRoles={["Security"]}>
-            <SecurityNotifications />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Security"]}>
+          <SecurityNotifications />
+        </ProtectedRoute>
+      }
       />
       <Route path="/security-settings" element={
-          <ProtectedRoute allowedRoles={["Security"]}>
-            <SecuritySettings />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Security"]}>
+          <SecuritySettings />
+        </ProtectedRoute>
+      }
       />
 
       {/* EMPLOYEE DASHBOARD - Protected by "Employee" */}
       <Route path="/employee-dashboard" element={
-          <ProtectedRoute allowedRoles={["Employee"]}>
-            <EmployeeDashboard />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Employee"]}>
+          <EmployeeDashboard />
+        </ProtectedRoute>
+      }
       />
       <Route
-  path="/employee-notifications"
-  element={<EmployeeNotifications />}
-/>
+        path="/employee-notifications"
+        element={<EmployeeNotifications />}
+      />
 
       <Route path="/employee-visitor-logs" element={
-          <ProtectedRoute allowedRoles={["Employee"]}>
-            <EmployeeLogs />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Employee"]}>
+          <EmployeeLogs />
+        </ProtectedRoute>
+      }
       />
       <Route path="/employee-settings" element={
-          <ProtectedRoute allowedRoles={["Employee"]}>
-            <EmployeeSettings />
-          </ProtectedRoute>
-        }
+        <ProtectedRoute allowedRoles={["Employee"]}>
+          <EmployeeSettings />
+        </ProtectedRoute>
+      }
       />
 
       {/* FALLBACK */}
