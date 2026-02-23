@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\svms.api\\SVMS.Api.csproj": {}
+    "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\SVMS.API\\SVMS.Api.csproj": {}
   },
   "projects": {
-    "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\svms.api\\SVMS.Api.csproj": {
+    "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\SVMS.API\\SVMS.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\svms.api\\SVMS.Api.csproj",
+        "projectUniqueName": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\SVMS.API\\SVMS.Api.csproj",
         "projectName": "SVMS.Api",
-        "projectPath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\svms.api\\SVMS.Api.csproj",
+        "projectPath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\SVMS.API\\SVMS.Api.csproj",
         "packagesPath": "C:\\Users\\aseem\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\svms.api\\obj\\",
+        "outputPath": "C:\\Users\\aseem\\OneDrive\\Desktop\\new_svms\\SVMS.API\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
