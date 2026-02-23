@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SVMS.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4ed501fd1b5e6fdbe201db661da6097fb506ff40")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4165724347b581d7bf8081bbc2fc7f0c6807eb90")]
 [assembly: System.Reflection.AssemblyProductAttribute("SVMS.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SVMS.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
