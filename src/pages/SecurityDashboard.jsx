@@ -1,149 +1,176 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import SecuritySidebar from "../components/SecuritySidebar";
 import Header from "../components/Header";
-import StatsCard from "../components/StatsCard";
 import Button from "../components/Button";
-import VisitorListItem from "../components/VisitorListItem";
 import {
-  Users,
-  LogIn,
-  LogOut,
-  AlertCircle,
-  UserPlus,
-  Clock,
-  Bell
+  Users, LogIn, LogOut, AlertCircle, UserPlus, Clock, Bell, Building, ChevronRight
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const SecurityDashboard = () => {
   const navigate = useNavigate();
+  const [stats, setStats] = useState([]);
+  const [liveVisitors, setLiveVisitors] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // 🔹 EMPTY STATES (DATA WILL COME FROM API LATER)
-  const stats = [];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const res = await fetch("http://localhost:5260/api/visitors");
+        if (res.ok) {
+          const data = await res.json();
+          
+          const activeCount = data.filter(v => v.status === "Checked In").length;
+          const expectedCount = data.filter(v => v.status === "Approved").length;
+          const pendingCount = data.filter(v => v.status === "Pending Approval").length;
+          const todayStr = new Date().toISOString().split('T')[0];
+          const totalToday = data.filter(v => v.date === todayStr).length;
+
+          setStats([
+            { title: "Total Today", value: totalToday, icon: Users, color: "text-blue-600", bg: "bg-blue-50", border: "bg-blue-500" },
+            { title: "Active Inside", value: activeCount, icon: LogIn, color: "text-green-600", bg: "bg-green-50", border: "bg-green-500" },
+            { title: "Expected at Gate", value: expectedCount, icon: Clock, color: "text-indigo-600", bg: "bg-indigo-50", border: "bg-indigo-500" },
+            { title: "Pending Approval", value: pendingCount, icon: AlertCircle, color: "text-orange-600", bg: "bg-orange-50", border: "bg-orange-500" }
+          ]);
+
+          setLiveVisitors(data.filter(v => v.status === "Checked In"));
+        }
+      } catch (err) {
+        console.error("Failed to fetch dashboard data", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   const quickActions = [
-    { icon: UserPlus, label: "New Visitor", color: "bg-blue-500", path: "/security-register-visitor" },
-    { icon: LogIn, label: "Check In", color: "bg-green-500", path: "/security-active-visitors" },
-    { icon: LogOut, label: "Check Out", color: "bg-purple-500", path: "/security-active-visitors" },
-    { icon: Bell, label: "Alerts", color: "bg-orange-500", path: "/security-notifications" }
+    { icon: UserPlus, label: "Register Visitor", desc: "Add walk-in", color: "bg-blue-600", path: "/security/register-visitor" },
+    { icon: LogIn, label: "Check In / Out", desc: "Manage access", color: "bg-green-600", path: "/security/active-visitors" },
+    { icon: Bell, label: "Security Alerts", desc: "View AI threats", color: "bg-orange-500", path: "/security/alerts" }
   ];
 
-  const liveVisitors = [];
-  const securityAlerts = [];
-
-  const handleCheckOut = () => {
-    // API logic will be added later
-  };
-
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50/50">
       <SecuritySidebar />
 
       <div className="flex-1 ml-64">
-        <div className="p-8">
+        <div className="p-8 max-w-7xl mx-auto">
           <Header
             title="Security Dashboard"
             subtitle="Manage visitor check-ins and access control"
             action={
-              <Button
-                icon={UserPlus}
-                onClick={() => navigate("/security-register-visitor")}
-              >
+              <Button icon={UserPlus} onClick={() => navigate("/security/register-visitor")}>
                 Quick Registration
               </Button>
             }
           />
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            {stats.length === 0 && (
-              <div className="col-span-full text-center text-gray-500 text-sm">
-                No statistics available
+          {/* 🌟 Polished Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 mt-4">
+            {loading ? (
+              <div className="col-span-full flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
               </div>
-            )}
-            {stats.map((stat, index) => (
-              <StatsCard key={index} {...stat} />
-            ))}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            {quickActions.map((action, index) => (
-              <button
-                key={index}
-                onClick={() => navigate(action.path)}
-                className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all group"
-              >
-                <div
-                  className={`w-12 h-12 ${action.color} rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}
-                >
-                  <action.icon className="w-6 h-6 text-white" />
-                </div>
-                <p className="text-sm font-medium text-gray-900">{action.label}</p>
-              </button>
-            ))}
-          </div>
-
-          {/* Live Visitor List & Alerts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Live Visitors */}
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Live Visitor List
-                </h2>
-              </div>
-
-              {liveVisitors.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center">
-                  No active visitors
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {liveVisitors.map((visitor) => (
-                    <VisitorListItem
-                      key={visitor.id}
-                      visitor={visitor}
-                      onCheckOut={handleCheckOut}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Security Alerts */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <AlertCircle className="w-5 h-5 text-orange-500" />
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Security Alerts
-                </h2>
-              </div>
-
-              {securityAlerts.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center">
-                  No active alerts
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {securityAlerts.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className="p-3 rounded-lg bg-gray-100"
-                    >
-                      <div className="flex items-start gap-2">
-                        <Clock className="w-4 h-4 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium">{alert.title}</p>
-                          <p className="text-xs opacity-80">
-                            {alert.description}
-                          </p>
-                        </div>
-                      </div>
+            ) : (
+              stats.map((stat, index) => (
+                <div key={index} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">{stat.title}</p>
+                      <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{stat.value}</h3>
                     </div>
-                  ))}
+                    <div className={`p-3 rounded-xl ${stat.bg}`}>
+                      <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                    </div>
+                  </div>
+                  {/* Bottom Accent Line */}
+                  <div className={`absolute bottom-0 left-0 w-full h-1 ${stat.border} opacity-80 group-hover:opacity-100 transition-opacity`} />
                 </div>
-              )}
+              ))
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* 🌟 Polished Live Visitor List */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900">Live Facility Occupancy</h2>
+                <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                  {liveVisitors.length} Active
+                </span>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                {loading ? (
+                  <p className="text-sm text-gray-500 text-center py-12">Loading visitors...</p>
+                ) : liveVisitors.length === 0 ? (
+                  <div className="text-center py-16 px-6">
+                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <LogOut className="w-8 h-8 text-gray-300" />
+                    </div>
+                    <h3 className="text-base font-semibold text-gray-900">Facility is empty</h3>
+                    <p className="text-sm text-gray-500 mt-1">No active visitors currently checked in.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-50">
+                    {liveVisitors.map((visitor) => (
+                      <div key={visitor.id} className="flex items-center justify-between p-5 hover:bg-gray-50/80 transition-colors">
+                        <div className="flex items-center gap-4">
+                          {visitor.photo ? (
+                            <img src={visitor.photo} alt="Visitor" className="w-12 h-12 rounded-xl object-cover border border-gray-200 shadow-sm" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-100 to-green-200 text-green-700 flex items-center justify-center font-bold text-lg shadow-sm border border-green-100">
+                              {visitor.fullName.charAt(0)}
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-bold text-gray-900">{visitor.fullName}</p>
+                            <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                              <Building className="w-3.5 h-3.5" /> {visitor.company} <span className="mx-1">•</span> Host: {visitor.host}
+                            </p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => navigate('/security/active-visitors')}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-green-700 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                        >
+                          Manage
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* 🌟 Polished Quick Actions Sidebar */}
+            <div className="space-y-6">
+              <h2 className="text-lg font-bold text-gray-900">Quick Actions</h2>
+              <div className="grid grid-cols-1 gap-4">
+                {quickActions.map((action, index) => (
+                  <button
+                    key={index}
+                    onClick={() => navigate(action.path)}
+                    className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-green-200 transition-all group text-left"
+                  >
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${action.color} text-white shadow-sm group-hover:scale-105 transition-transform`}>
+                      <action.icon className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900">{action.label}</p>
+                      <p className="text-xs text-gray-500 font-medium">{action.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

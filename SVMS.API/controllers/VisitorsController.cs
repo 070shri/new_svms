@@ -1,6 +1,13 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using SVMS.Api.Models;
-using SVMS.Api.Services;
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Linq;
+using System.Collections.Generic;
+using SVMS.Api.Models;    
+using SVMS.Api.Services;  
 
 namespace SVMS.Api.Controllers
 {
@@ -9,101 +16,142 @@ namespace SVMS.Api.Controllers
     public class VisitorsController : ControllerBase
     {
         private readonly VisitorService _visitorService;
+        private readonly HttpClient _httpClient;
+        private const string AI_SERVICE_URL = "http://localhost:8000";
 
-        public VisitorsController(VisitorService visitorService)
+        public VisitorsController(VisitorService visitorService, IHttpClientFactory httpClientFactory)
         {
             _visitorService = visitorService;
+            _httpClient = httpClientFactory.CreateClient();
+            _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }
 
-        // POST /api/visitors/register
+        // ── HYBRID REGISTRATION (Saves to MongoDB + Enrolls in AI) ──
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] Visitor visitor)
+        public async Task<IActionResult> Register([FromForm] VisitorRegistrationRequest request)
         {
-            if (visitor == null) return BadRequest("Visitor data is required.");
+            try
+            {
+                if (request.Photo == null || request.Photo.Length == 0)
+                    return BadRequest(new { error = "Photo is required for AI Enrollment." });
 
-            visitor.Status = (visitor.RegisteredBy == "Admin") ? "Approved" : "Pending Approval";
-            visitor.CreatedAt = DateTime.UtcNow;
+                string base64Photo;
+                using (var ms = new MemoryStream())
+                {
+                    await request.Photo.CopyToAsync(ms);
+                    base64Photo = $"data:{request.Photo.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+                }
 
-            await _visitorService.CreateAsync(visitor);
-            return Ok(new { message = "Registered successfully", status = visitor.Status });
+                var newVisitor = new Visitor
+                {
+                    FullName = request.FullName,
+                    Email = request.Email,
+                    Phone = request.Phone,
+                    Company = request.Company,
+                    Purpose = request.Purpose,
+                    Host = request.Host,
+                    HostEmail = request.HostEmail,
+                    Date = request.Date,
+                    Time = request.Time,
+                    IdType = request.IdType,
+                    IdNumber = request.IdNumber,
+                    RegisteredBy = request.RegisteredBy,
+                    Photo = base64Photo, 
+                    Status = (request.RegisteredBy == "Admin") ? "Approved" : "Pending Approval",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _visitorService.CreateAsync(newVisitor);
+
+                var aiSuccess = await EnrollFaceInAI(newVisitor.Id, request.FullName, request.Photo);
+
+                if (!aiSuccess) 
+                {
+                    Console.WriteLine("Warning: Saved to MongoDB, but AI enrollment failed.");
+                }
+
+                return Ok(new { 
+                    success = true, 
+                    message = "Registered successfully", 
+                    status = newVisitor.Status,
+                    visitorId = newVisitor.Id 
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+            }
         }
 
-        // GET /api/visitors
+        private async Task<bool> EnrollFaceInAI(string visitorId, string fullName, IFormFile photo)
+        {
+            try
+            {
+                using var content = new MultipartFormDataContent();
+                
+                content.Add(new StringContent(visitorId ?? ""), "visitor_id");
+                content.Add(new StringContent(fullName ?? ""), "name");
+                content.Add(new StringContent("visitor"), "category");
+
+                using var photoStream = photo.OpenReadStream();
+                using var photoContent = new StreamContent(photoStream);
+                photoContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(photo.ContentType);
+                content.Add(photoContent, "file", photo.FileName);
+
+                var response = await _httpClient.PostAsync($"{AI_SERVICE_URL}/enroll", content);
+                return response.IsSuccessStatusCode;
+            }
+            catch { return false; }
+        }
+
+        // ── CORE VMS ENDPOINTS ──
         [HttpGet]
-        public async Task<ActionResult<List<Visitor>>> GetAll() =>
-            Ok(await _visitorService.GetAsync());
+        public async Task<ActionResult<List<Visitor>>> GetAll() => Ok(await _visitorService.GetAsync());
 
-        // GET /api/visitors/host/{email}
         [HttpGet("host/{email}")]
-        public async Task<IActionResult> GetByHost(string email) =>
-            Ok(await _visitorService.GetByHostEmailAsync(email));
+        public async Task<IActionResult> GetByHost(string email) => Ok(await _visitorService.GetByHostEmailAsync(email));
 
-        // GET /api/visitors/stats
-        [HttpGet("stats")]
-        public async Task<IActionResult> GetDashboardStats() =>
-            Ok(await _visitorService.GetDashboardStatsAsync());
-
-        // PATCH /api/visitors/{id}/status
-        // SMART ROUTER: Handles generic status updates, plus Check-In/Check-Out redirects
         [HttpPatch("{id}/status")]
         public async Task<IActionResult> UpdateStatus(string id, [FromBody] StatusUpdateRequest update)
         {
-            if (update == null || string.IsNullOrEmpty(update.Status))
-                return BadRequest(new { message = "Status is required." });
+            if (update == null || string.IsNullOrEmpty(update.Status)) return BadRequest(new { message = "Status is required." });
 
-            // Automatically route to proper Check-In logic
-            if (update.Status == "Checked In")
-            {
-                var success = await _visitorService.CheckInAsync(id);
-                return success ? Ok(new { message = "Visitor checked in successfully." }) 
-                               : BadRequest(new { message = "Visitor must be approved to check in." });
-            }
+            if (update.Status == "Checked In") return await _visitorService.CheckInAsync(id) ? Ok(new { message = "Checked in." }) : BadRequest();
+            if (update.Status == "Checked Out") return await _visitorService.CheckOutAsync(id) ? Ok(new { message = "Checked out." }) : BadRequest();
 
-            // Automatically route to proper Check-Out logic
-            if (update.Status == "Checked Out")
-            {
-                var success = await _visitorService.CheckOutAsync(id);
-                return success ? Ok(new { message = "Visitor checked out successfully." }) 
-                               : BadRequest(new { message = "Visitor must be checked in to check out." });
-            }
-
-            // Standard Approval/Rejection logic
             var allowedStatuses = new[] { "Approved", "Rejected", "Pending Approval" };
-            if (!allowedStatuses.Contains(update.Status))
-                return BadRequest(new { message = "Invalid status update." });
+            if (!allowedStatuses.Contains(update.Status)) return BadRequest(new { message = "Invalid status." });
 
             await _visitorService.UpdateStatusAsync(id, update.Status, update.ActionBy);
             return Ok(new { message = $"Visitor status updated to {update.Status}." });
         }
 
-        // PATCH /api/visitors/{id}/checkin
-        // Dedicated endpoint
         [HttpPatch("{id}/checkin")]
-        public async Task<IActionResult> CheckIn(string id)
-        {
-            var success = await _visitorService.CheckInAsync(id);
-            if (!success)
-                return BadRequest(new { message = "Visitor must be in 'Approved' status to check in." });
+        public async Task<IActionResult> CheckIn(string id) => await _visitorService.CheckInAsync(id) ? Ok(new { message = "Checked in." }) : BadRequest();
 
-            return Ok(new { message = "Visitor checked in successfully." });
-        }
-
-        // PATCH /api/visitors/{id}/checkout
-        // Dedicated endpoint
         [HttpPatch("{id}/checkout")]
-        public async Task<IActionResult> CheckOut(string id)
+        public async Task<IActionResult> CheckOut(string id) => await _visitorService.CheckOutAsync(id) ? Ok(new { message = "Checked out." }) : BadRequest();
+
+        [HttpGet("stats")]
+        public async Task<IActionResult> GetDashboardStats() => Ok(await _visitorService.GetDashboardStatsAsync());
+
+        // ── AI DASHBOARD ENDPOINTS ──
+        [HttpGet("alerts")]
+        public async Task<IActionResult> GetAlerts([FromQuery] int limit = 50)
         {
-            var success = await _visitorService.CheckOutAsync(id);
-            if (!success)
-                return BadRequest(new { message = "Visitor must be in 'Checked In' status to check out." });
-
-            return Ok(new { message = "Visitor checked out successfully." });
+            try {
+                var res = await _httpClient.GetAsync($"{AI_SERVICE_URL}/alerts?limit={limit}");
+                return Content(await res.Content.ReadAsStringAsync(), "application/json");
+            } catch { return StatusCode(500, new { error = "AI offline" }); }
         }
-    }
 
-    public class StatusUpdateRequest
-    {
-        public string Status { get; set; } = string.Empty;
-        public string ActionBy { get; set; } = string.Empty;
+        [HttpGet("alerts/geofence")]
+        public async Task<IActionResult> GetGeofenceAlerts([FromQuery] int limit = 50)
+        {
+            try {
+                var res = await _httpClient.GetAsync($"{AI_SERVICE_URL}/alerts/geofence?limit={limit}");
+                return Content(await res.Content.ReadAsStringAsync(), "application/json");
+            } catch { return StatusCode(500, new { error = "AI offline" }); }
+        }
     }
 }
