@@ -10,8 +10,22 @@ const SecurityNotifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [checkingIn, setCheckingIn] = useState(null); // visitorId being checked in
-  const [checkedIn, setCheckedIn] = useState({}); // { [notifId]: true } flash state
+  const [checkingIn, setCheckingIn] = useState(null); 
+  const [checkedIn, setCheckedIn] = useState({}); 
+
+  // ✅ SMART FILTER: Removes old actionable items that are already done
+  const filterValidNotifications = (data, flashingIds) => {
+    return data.filter((n) => {
+      // 1. Don't render cards that are currently in the middle of the flash animation
+      if (flashingIds.includes(n.id)) return false;
+      
+      // 2. Hide "Approved" cards if they have already been marked as read (Checked In)
+      // This stops old, previously checked-in visitors from reappearing on page refresh.
+      if (n.type === "approved" && n.isRead) return false;
+      
+      return true;
+    });
+  };
 
   const fetchNotifications = useCallback(async (isRefresh = false) => {
     if (!user?.email) return;
@@ -22,11 +36,7 @@ const SecurityNotifications = () => {
       );
       if (res.ok) {
         const data = await res.json();
-        // Never overwrite cards that are mid-flash animation
-        setNotifications((prev) => {
-          const flashingIds = Object.keys(checkedIn);
-          return data.filter((n) => !flashingIds.includes(n.id));
-        });
+        setNotifications((prev) => filterValidNotifications(data, Object.keys(checkedIn)));
       }
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
@@ -36,8 +46,9 @@ const SecurityNotifications = () => {
     }
   }, [user?.email, checkedIn]);
 
-  useEffect(() => { fetchNotifications(); }, [user?.email]);
+  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
+  // Poll every 15s
   useEffect(() => {
     const interval = setInterval(() => {
       if (!user?.email) return;
@@ -45,10 +56,7 @@ const SecurityNotifications = () => {
         .then((r) => r.ok ? r.json() : null)
         .then((data) => {
           if (!data) return;
-          setNotifications((prev) => {
-            const flashingIds = Object.keys(checkedIn);
-            return data.filter((n) => !flashingIds.includes(n.id));
-          });
+          setNotifications((prev) => filterValidNotifications(data, Object.keys(checkedIn)));
         })
         .catch(() => {});
     }, 15000);
@@ -71,7 +79,10 @@ const SecurityNotifications = () => {
         `http://localhost:5260/api/notifications/mark-all-read?email=${encodeURIComponent(user.email)}&role=Security`,
         { method: "PATCH" }
       );
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      // Mark all as read, which will automatically hide the old "approved" ones
+      setNotifications((prev) => 
+        prev.map((n) => ({ ...n, isRead: true })).filter(n => n.type !== "approved")
+      );
     } catch (err) {
       console.error("Failed to mark all as read:", err);
     }
@@ -87,7 +98,7 @@ const SecurityNotifications = () => {
       );
 
       if (res.ok) {
-        // Mark notification as read in backend
+        // Mark notification as read in backend so it never loads on this page again
         await fetch(`http://localhost:5260/api/notifications/${notifId}/read`, { method: "PATCH" });
 
         // Show success flash then remove card

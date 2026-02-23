@@ -1,144 +1,227 @@
-import React, { useState, useEffect } from 'react';
-import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
-import Button from '../components/Button';
-import Input from '../components/Input';
-import {
-  User, Mail, Phone, Building, Calendar, Clock,
-  Camera, CheckCircle, ArrowLeft, ArrowRight,
-  CreditCard, X, ChevronDown, AlertCircle
+import React, { useState, useEffect, useRef } from 'react';
+import Sidebar from "../components/Sidebar"; // Admin Sidebar
+import Header from "../components/Header";
+import Button from "../components/Button";
+import Input from "../components/Input";
+import { 
+  User, Mail, Phone, Building, Calendar, Clock, 
+  CheckCircle, ArrowLeft, ArrowRight, CreditCard, 
+  Send, X, ChevronDown, UploadCloud
 } from 'lucide-react';
 
 const RegisterVisitor = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     fullName: '', email: '', phone: '', company: '',
-    purpose: '', otherPurpose: '',
-    host: '', hostEmail: '',
-    date: '', time: '',
-    idType: '', idNumber: '', photo: null
+    purpose: '', host: '', hostEmail: '',
+    date: '', time: '', idType: '', idNumber: '', photo: null
   });
-  const [stepError, setStepError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
-  // Employee dropdown
+  // Validation Error State
+  const [errors, setErrors] = useState({});
+
+  // File Upload State
+  const [photoFile, setPhotoFile] = useState(null); 
+  const fileInputRef = useRef(null);
+
+  // Dropdown & API State
   const [employees, setEmployees] = useState([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const steps = [
     { number: 1, title: 'Personal Info', icon: User },
     { number: 2, title: 'Visit Details', icon: Building },
-    { number: 3, title: 'ID & Photo',    icon: CreditCard },
-    { number: 4, title: 'Review',        icon: CheckCircle }
+    { number: 3, title: 'ID & Photo', icon: CreditCard },
+    { number: 4, title: 'Review', icon: CheckCircle }
   ];
 
   const purposeOptions = ['Business Meeting', 'Interview', 'Client Visit', 'Delivery', 'Maintenance', 'Other'];
   const idTypes = ['Driver License', 'Passport', 'Government ID', 'Employee ID', 'Other'];
 
-  // Today's date as YYYY-MM-DD for min attribute
-  const today = new Date().toISOString().split('T')[0];
-  // Current time as HH:MM for min attribute
-  const nowTime = `${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`;
-
+  // Fetch employees on mount
   useEffect(() => {
-    setLoadingEmployees(true);
-    fetch('http://localhost:5260/api/auth/employees')
-      .then(r => r.ok ? r.json() : [])
-      .then(data => setEmployees(data))
-      .catch(() => {})
-      .finally(() => setLoadingEmployees(false));
+    const fetchEmployees = async () => {
+      setLoadingEmployees(true);
+      try {
+        const res = await fetch('http://localhost:5260/api/auth/employees');
+        if (res.ok) setEmployees(await res.json());
+      } catch (err) {
+        console.error('Failed to fetch employees:', err);
+      } finally {
+        setLoadingEmployees(false);
+      }
+    };
+    fetchEmployees();
   }, []);
 
+  // ── SAFE LOCAL DATE HELPERS ──
+  const getLocalToday = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getMaxDate = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 6);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // ── HANDLE INPUT CHANGES ──
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    setStepError('');
+    
+    // Clear the specific error when the user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: null });
+    }
+
+    if (name === 'phone') {
+      const numbersOnly = value.replace(/\D/g, '').slice(0, 10);
+      setFormData({ ...formData, [name]: numbersOnly });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleSelectEmployee = (emp) => {
-    setFormData(prev => ({ ...prev, host: emp.fullName, hostEmail: emp.email }));
+    setFormData({ ...formData, host: emp.fullName, hostEmail: emp.email });
     setDropdownOpen(false);
-    setStepError('');
+    if (errors.host) setErrors({ ...errors, host: null });
   };
 
-  const handleImageChange = (e) => {
+  // ── FILE UPLOAD LOGIC ──
+  const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors({ ...errors, photo: "File is too large. Please select an image under 5MB." });
+        return;
+      }
+      setPhotoFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => setFormData(prev => ({ ...prev, photo: reader.result }));
+      reader.onloadend = () => {
+        setFormData({ ...formData, photo: reader.result });
+        if (errors.photo) setErrors({ ...errors, photo: null });
+      };
       reader.readAsDataURL(file);
     }
   };
 
-  // ── Inline validation per step ──
-  const validateAndNext = () => {
-    if (currentStep === 1) {
-      if (!formData.fullName.trim())
-        return setStepError('Full name is required.');
-      if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
-        return setStepError('Enter a valid email address.');
-      const digits = formData.phone.replace(/\D/g, '');
-      if (!formData.phone.trim() || digits.length < 7 || digits.length > 15)
-        return setStepError('Enter a valid phone number (7–15 digits).');
-    }
-
-    if (currentStep === 2) {
-      if (!formData.company.trim())
-        return setStepError('Company name is required.');
-      if (!formData.purpose)
-        return setStepError('Please select a purpose of visit.');
-      if (formData.purpose === 'Other' && !formData.otherPurpose.trim())
-        return setStepError('Please describe the purpose of visit.');
-      if (!formData.host)
-        return setStepError('Please select a host employee.');
-      if (!formData.date)
-        return setStepError('Please select a visit date.');
-      if (formData.date < today)
-        return setStepError('Visit date cannot be in the past.');
-      if (!formData.time)
-        return setStepError('Please select a visit time.');
-      if (formData.date === today && formData.time < nowTime)
-        return setStepError('Visit time cannot be in the past for today.');
-    }
-
-    if (currentStep === 3) {
-      if (!formData.idType)
-        return setStepError('Please select an ID type.');
-      if (!formData.idNumber.trim())
-        return setStepError('ID number is required.');
-    }
-
-    setStepError('');
-    setCurrentStep(s => s + 1);
+  const retakePhoto = () => {
+    setFormData({ ...formData, photo: null });
+    setPhotoFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleBack = () => {
-    setStepError('');
-    setCurrentStep(s => s - 1);
+  // ── EXPLICIT VALIDATION LIKE GOOGLE FORMS ──
+  const validateStep = (step) => {
+    const newErrors = {};
+    let isValid = true;
+
+    if (step === 1) {
+      if (!formData.fullName.trim()) { newErrors.fullName = "Full Name is required."; isValid = false; }
+      if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { newErrors.email = "Enter a valid email address."; isValid = false; }
+      if (formData.phone.length !== 10) { newErrors.phone = "Mobile number must be strictly 10 digits."; isValid = false; }
+    } 
+    else if (step === 2) {
+      if (!formData.company.trim()) { newErrors.company = "Company name is required."; isValid = false; }
+      if (!formData.purpose.trim()) { newErrors.purpose = "Please select a purpose."; isValid = false; }
+      if (!formData.host.trim()) { newErrors.host = "Please select a host employee."; isValid = false; }
+      
+      const today = getLocalToday();
+      const maxDate = getMaxDate();
+
+      if (!formData.date) {
+        newErrors.date = "Date is required."; isValid = false;
+      } else if (formData.date < today) {
+        newErrors.date = "Select a Valid date."; isValid = false;
+      } else if (formData.date > maxDate) {
+        newErrors.date = "Cannot schedule more than 1 year in advance."; isValid = false;
+      }
+
+      if (!formData.time) {
+        newErrors.time = "Time is required."; isValid = false;
+      } else if (formData.date === today) {
+        const currentTime = new Date().toTimeString().slice(0, 5); // HH:MM
+        if (formData.time < currentTime) {
+          newErrors.time = "Cannot select a past time for today."; isValid = false;
+        }
+      }
+    } 
+    else if (step === 3) {
+      if (!formData.idType) { newErrors.idType = "ID Type is required."; isValid = false; }
+      if (!formData.idNumber.trim()) { newErrors.idNumber = "ID Number is required."; isValid = false; }
+      if (!formData.photo) { newErrors.photo = "A visitor photo is required."; isValid = false; }
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
-  const handleSubmit = async () => {
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleBack = () => { 
+    if (currentStep > 1) {
+      setErrors({}); // Clear errors when going back
+      setCurrentStep(currentStep - 1); 
+    }
+  };
+
+  // ── SUBMISSION ──
+  const handleSubmitRequest = async () => {
+    if (!validateStep(3)) return; // Final safety check
+
     setSubmitting(true);
     try {
-      const payload = {
-        ...formData,
-        purpose: formData.purpose === 'Other' ? formData.otherPurpose : formData.purpose,
-        registeredBy: 'Admin',
-      };
-      const res = await fetch('http://localhost:5260/api/visitors/register', {
+      const submitData = new FormData();
+      submitData.append('fullName', formData.fullName);
+      submitData.append('email', formData.email);
+      submitData.append('phone', formData.phone);
+      submitData.append('company', formData.company);
+      submitData.append('purpose', formData.purpose);
+      submitData.append('host', formData.host);
+      submitData.append('hostEmail', formData.hostEmail);
+      submitData.append('date', formData.date);
+      submitData.append('time', formData.time);
+      submitData.append('idType', formData.idType);
+      submitData.append('idNumber', formData.idNumber);
+      submitData.append('registeredBy', 'Admin'); 
+
+      if (photoFile) submitData.append('photo', photoFile);
+
+      const response = await fetch('http://localhost:5260/api/visitors/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: submitData,
       });
-      if (res.ok) {
-        alert('Visitor registered successfully!');
+
+      if (response.ok) {
+        alert('Visitor successfully pre-registered and Approved!');
         setCurrentStep(1);
-        setFormData({ fullName:'', email:'', phone:'', company:'', purpose:'', otherPurpose:'', host:'', hostEmail:'', date:'', time:'', idType:'', idNumber:'', photo: null });
+        setFormData({
+          fullName: '', email: '', phone: '', company: '',
+          purpose: '', host: '', hostEmail: '',
+          date: '', time: '', idType: '', idNumber: '', photo: null
+        });
+        setPhotoFile(null);
+        setErrors({});
       } else {
-        alert('Failed to register visitor.');
+        const errorData = await response.json();
+        alert(`Failed to register visitor: ${errorData.error || 'Unknown error'}`);
       }
-    } catch {
+    } catch (error) {
+      console.error('Registration error:', error);
       alert('Error connecting to backend!');
     } finally {
       setSubmitting(false);
@@ -150,195 +233,208 @@ const RegisterVisitor = () => {
       <Sidebar />
       <div className="flex-1 ml-64">
         <div className="p-8">
-          <Header title="Visitor Registration" subtitle="Register a new visitor to the premises" />
+          <Header title="Pre-Register Visitor" subtitle="Admin file-based registration" />
 
-          {/* Progress Steps */}
-          <div className="bg-white rounded-xl p-6 shadow-sm border mb-6">
-            <div className="flex items-center justify-between">
-              {steps.map((step, index) => (
-                <React.Fragment key={step.number}>
-                  <div className="flex flex-col items-center">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${currentStep >= step.number ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                      <step.icon className="w-6 h-6" />
-                    </div>
-                    <span className={`text-sm mt-2 ${currentStep >= step.number ? 'text-blue-600 font-medium' : 'text-gray-600'}`}>{step.title}</span>
-                  </div>
-                  {index < steps.length - 1 && (
-                    <div className={`flex-1 h-1 mx-4 transition-all ${currentStep > step.number ? 'bg-blue-500' : 'bg-gray-200'}`} />
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
+          {/* Step Indicators */}
+          <div className="flex items-center justify-center gap-2 my-6">
+            {steps.map((step, idx) => (
+              <React.Fragment key={step.number}>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  currentStep === step.number
+                    ? 'bg-blue-600 text-white'
+                    : currentStep > step.number
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-gray-100 text-gray-500'
+                }`}>
+                  <step.icon className="w-3.5 h-3.5" />
+                  {step.title}
+                </div>
+                {idx < steps.length - 1 && (
+                  <div className={`h-0.5 w-8 rounded ${currentStep > step.number ? 'bg-blue-400' : 'bg-gray-200'}`} />
+                )}
+              </React.Fragment>
+            ))}
           </div>
 
-          <div className="bg-white rounded-xl p-8 shadow-sm border">
+          <div className="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
 
-            {/* Error Banner */}
-            {stepError && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 mb-4">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                {stepError}
-              </div>
-            )}
-
-            {/* ── STEP 1 ── */}
+            {/* STEP 1 - Personal Info */}
             {currentStep === 1 && (
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Personal Information</h2>
-                <Input label="Full Name" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="John Smith" icon={User} required />
-                <Input label="Email Address" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="john@company.com" icon={Mail} required />
                 <div>
-                  <Input label="Phone Number" type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+1 (555) 123-4567" icon={Phone} required />
-                  <p className="text-xs text-gray-400 mt-1 ml-1">7–15 digits. Can include +, spaces, dashes.</p>
+                  <Input label="Full Name" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="John Smith" icon={User} />
+                  {errors.fullName && <p className="text-xs text-red-500 mt-1 font-medium">{errors.fullName}</p>}
+                </div>
+                <div>
+                  <Input label="Email Address" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="john@company.com" icon={Mail} />
+                  {errors.email && <p className="text-xs text-red-500 mt-1 font-medium">{errors.email}</p>}
+                </div>
+                <div>
+                  <Input label="Phone Number" type="text" name="phone" value={formData.phone} onChange={handleChange} placeholder="10-digit mobile number" icon={Phone} />
+                  {errors.phone && <p className="text-xs text-red-500 mt-1 font-medium">{errors.phone}</p>}
                 </div>
               </div>
             )}
 
-            {/* ── STEP 2 ── */}
+            {/* STEP 2 - Visit Details */}
             {currentStep === 2 && (
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Visit Details</h2>
-                <Input label="Company" name="company" value={formData.company} onChange={handleChange} placeholder="Company name" icon={Building} required />
-
-                {/* Purpose */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Purpose of Visit <span className="text-red-500">*</span></label>
+                  <Input label="Company" name="company" value={formData.company} onChange={handleChange} placeholder="Company name" icon={Building} />
+                  {errors.company && <p className="text-xs text-red-500 mt-1 font-medium">{errors.company}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Purpose <span className="text-red-500">*</span></label>
                   <div className="grid grid-cols-3 gap-3">
-                    {purposeOptions.map(p => (
-                      <button key={p} type="button"
-                        onClick={() => { setFormData(prev => ({ ...prev, purpose: p })); setStepError(''); }}
-                        className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${formData.purpose === p ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300'}`}>
-                        {p}
+                    {purposeOptions.map((purpose) => (
+                      <button key={purpose} type="button"
+                        onClick={() => { setFormData({ ...formData, purpose }); setErrors({...errors, purpose: null}); }}
+                        className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${formData.purpose === purpose ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300'}`}>
+                        {purpose}
                       </button>
                     ))}
                   </div>
-                  {/* Other free-text field */}
-                  {formData.purpose === 'Other' && (
-                    <textarea
-                      name="otherPurpose"
-                      value={formData.otherPurpose}
-                      onChange={handleChange}
-                      placeholder="Please describe the reason for the visit..."
-                      rows={3}
-                      className="mt-3 w-full px-4 py-2.5 border border-blue-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    />
-                  )}
+                  {errors.purpose && <p className="text-xs text-red-500 mt-1 font-medium">{errors.purpose}</p>}
                 </div>
 
-                {/* Host Employee Dropdown */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Host Employee <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Host Employee <span className="text-red-500">*</span>
+                  </label>
                   <div className="relative">
-                    <button type="button" onClick={() => setDropdownOpen(!dropdownOpen)}
-                      className="w-full flex items-center justify-between px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                    <button
+                      type="button"
+                      onClick={() => setDropdownOpen(!dropdownOpen)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-sm hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    >
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-gray-400" />
                         <span className={formData.host ? 'text-gray-900' : 'text-gray-400'}>
-                          {formData.host || (loadingEmployees ? 'Loading...' : 'Select host employee')}
+                          {formData.host || (loadingEmployees ? 'Loading employees...' : 'Select host employee')}
                         </span>
                       </div>
                       <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
+
                     {dropdownOpen && (
                       <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                         {loadingEmployees ? (
                           <div className="px-4 py-3 text-sm text-gray-500">Loading...</div>
                         ) : employees.length === 0 ? (
                           <div className="px-4 py-3 text-sm text-gray-500">No employees found</div>
-                        ) : employees.map(emp => (
-                          <button key={emp.email} type="button" onClick={() => handleSelectEmployee(emp)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-blue-50 transition-colors text-left ${formData.hostEmail === emp.email ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-900'}`}>
-                            <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-xs flex-shrink-0">
-                              {emp.fullName.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="font-medium">{emp.fullName}</p>
-                              <p className="text-xs text-gray-500">{emp.email}</p>
-                            </div>
-                          </button>
-                        ))}
+                        ) : (
+                          employees.map((emp) => (
+                            <button
+                              key={emp.email}
+                              type="button"
+                              onClick={() => handleSelectEmployee(emp)}
+                              className={`w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-blue-50 transition-colors text-left ${
+                                formData.hostEmail === emp.email ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-900'
+                              }`}
+                            >
+                              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-xs flex-shrink-0">
+                                {emp.fullName.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-medium">{emp.fullName}</p>
+                                <p className="text-xs text-gray-500">{emp.email}</p>
+                              </div>
+                            </button>
+                          ))
+                        )}
                       </div>
                     )}
                   </div>
+                  {errors.host && <p className="text-xs text-red-500 mt-1 font-medium">{errors.host}</p>}
                 </div>
 
-                {/* Date — blocked to today or future only */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Input label="Date" type="date" name="date" value={formData.date} onChange={handleChange} icon={Calendar} required min={today} />
-                    <p className="text-xs text-gray-400 mt-1 ml-1">Cannot be a past date.</p>
+                    <Input label="Date" type="date" name="date" value={formData.date} onChange={handleChange} icon={Calendar} min={getLocalToday()} max={getMaxDate()} />
+                    {errors.date && <p className="text-xs text-red-500 mt-1 font-medium">{errors.date}</p>}
                   </div>
                   <div>
-                    {/* Time — if today selected, block past times */}
-                    <Input label="Time" type="time" name="time" value={formData.time} onChange={handleChange} icon={Clock} required min={formData.date === today ? nowTime : undefined} />
-                    {formData.date === today && <p className="text-xs text-gray-400 mt-1 ml-1">Cannot be a past time for today.</p>}
+                    <Input label="Time" type="time" name="time" value={formData.time} onChange={handleChange} icon={Clock} />
+                    {errors.time && <p className="text-xs text-red-500 mt-1 font-medium">{errors.time}</p>}
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ── STEP 3 ── */}
+            {/* STEP 3 - ID & Photo Upload */}
             {currentStep === 3 && (
               <div className="space-y-4">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">ID Verification & Photo</h2>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">ID Type <span className="text-red-500">*</span></label>
                   <div className="grid grid-cols-3 gap-3">
-                    {idTypes.map(type => (
-                      <button key={type} type="button" onClick={() => setFormData(prev => ({ ...prev, idType: type }))}
+                    {idTypes.map((type) => (
+                      <button key={type} type="button"
+                        onClick={() => { setFormData({ ...formData, idType: type }); setErrors({...errors, idType: null}); }}
                         className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${formData.idType === type ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300'}`}>
                         {type}
                       </button>
                     ))}
                   </div>
+                  {errors.idType && <p className="text-xs text-red-500 mt-1 font-medium">{errors.idType}</p>}
                 </div>
-                <Input label="ID Number" name="idNumber" value={formData.idNumber} onChange={handleChange} placeholder="Enter ID number" icon={CreditCard} required />
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Visitor Photo</label>
+                  <Input label="ID Number" name="idNumber" value={formData.idNumber} onChange={handleChange} icon={CreditCard} />
+                  {errors.idNumber && <p className="text-xs text-red-500 mt-1 font-medium">{errors.idNumber}</p>}
+                </div>
+
+                {/* FILE UPLOAD ZONE */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Visitor Photo <span className="text-red-500">*</span></label>
+                  
                   {!formData.photo ? (
-                    <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer block hover:border-blue-400 hover:bg-blue-50 transition-all group">
-                      <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                      <div className="flex flex-col items-center">
-                        <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                          <Camera className="w-7 h-7 text-blue-500" />
-                        </div>
-                        <p className="text-sm font-medium text-gray-900">Upload Photo from Device</p>
-                        <p className="text-xs text-gray-500 mt-1">JPG, PNG up to 5MB</p>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg h-56 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors group relative cursor-pointer" onClick={() => fileInputRef.current.click()}>
+                      <input 
+                        type="file" 
+                        accept="image/jpeg, image/png" 
+                        className="hidden" 
+                        ref={fileInputRef} 
+                        onChange={handlePhotoUpload} 
+                      />
+                      <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                        <UploadCloud className="w-7 h-7 text-blue-600" />
                       </div>
-                    </label>
+                      <p className="font-semibold text-gray-700">Click to Upload Photo</p>
+                      <p className="text-xs text-gray-500 mt-1">JPG or PNG (max 5MB)</p>
+                    </div>
                   ) : (
-                    <div className="relative inline-block">
-                      <img src={formData.photo} alt="Preview" className="rounded-lg w-full max-w-xs shadow-md border" />
-                      <button onClick={() => setFormData(prev => ({ ...prev, photo: null }))}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"><X className="w-4 h-4" /></button>
+                    <div className="relative inline-block border border-gray-200 rounded-lg p-2 bg-gray-50">
+                      <img src={formData.photo} alt="Visitor Preview" className="rounded-lg w-full max-w-sm h-auto object-contain shadow-sm" />
+                      <button onClick={retakePhoto} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-md border-2 border-white transition-colors">
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
                   )}
+                  {errors.photo && <p className="text-xs text-red-500 mt-1 font-medium">{errors.photo}</p>}
                 </div>
               </div>
             )}
 
-            {/* ── STEP 4 — Review ── */}
+            {/* STEP 4 - Review */}
             {currentStep === 4 && (
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Review Information</h2>
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg mb-4">
-                  {formData.photo
-                    ? <img src={formData.photo} className="w-16 h-16 rounded-full object-cover border-2 border-blue-500" alt="Visitor" />
-                    : <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center"><User className="w-8 h-8 text-blue-600" /></div>}
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{formData.fullName}</h3>
-                    <p className="text-sm text-gray-500">{formData.company}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   {[
-                    { label: 'Email',     value: formData.email },
-                    { label: 'Phone',     value: formData.phone },
-                    { label: 'Purpose',   value: formData.purpose === 'Other' ? formData.otherPurpose : formData.purpose },
-                    { label: 'Host',      value: formData.host },
-                    { label: 'Date',      value: formData.date },
-                    { label: 'Time',      value: formData.time },
-                    { label: 'ID Type',   value: formData.idType },
+                    { label: 'Full Name', value: formData.fullName },
+                    { label: 'Email', value: formData.email },
+                    { label: 'Phone', value: formData.phone },
+                    { label: 'Company', value: formData.company },
+                    { label: 'Purpose', value: formData.purpose },
+                    { label: 'Host Employee', value: formData.host },
+                    { label: 'Date', value: formData.date },
+                    { label: 'Time', value: formData.time },
+                    { label: 'ID Type', value: formData.idType },
                     { label: 'ID Number', value: formData.idNumber },
                   ].map(({ label, value }) => (
                     <div key={label} className="bg-gray-50 rounded-lg p-3">
@@ -348,26 +444,40 @@ const RegisterVisitor = () => {
                   ))}
                 </div>
                 {formData.photo && (
-                  <div className="mt-4">
+                  <div className="mt-4 bg-gray-50 p-3 rounded-lg inline-block">
                     <p className="text-xs text-gray-500 font-medium mb-2">Photo</p>
-                    <img src={formData.photo} alt="Visitor" className="w-24 h-24 rounded-lg object-cover border" />
+                    <img src={formData.photo} alt="Visitor" className="w-32 h-32 rounded-lg object-cover shadow-sm" />
                   </div>
                 )}
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-700">✓ This visitor will be registered as <strong>Approved</strong> by Admin.</p>
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 font-medium flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" /> This visitor will be registered as <strong>Approved</strong>.
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1 pl-6">
+                    Face will be enrolled in AI system for automatic recognition upon arrival.
+                  </p>
                 </div>
               </div>
             )}
 
             {/* Navigation */}
             <div className="flex items-center justify-between mt-8 pt-6 border-t">
-              <Button variant="secondary" onClick={handleBack} disabled={currentStep === 1} icon={ArrowLeft}>Back</Button>
-              {currentStep < 4
-                ? <Button onClick={validateAndNext} icon={ArrowRight}>Continue</Button>
-                : <Button variant="success" onClick={handleSubmit} disabled={submitting} icon={CheckCircle}>
-                    {submitting ? 'Registering...' : 'Complete Registration'}
-                  </Button>}
+              <Button variant="secondary" onClick={handleBack} disabled={currentStep === 1} icon={ArrowLeft}>
+                Back
+              </Button>
+              
+              {currentStep < 4 ? (
+                // ✅ Next button is ALWAYS clickable, but triggers validation errors instead of advancing
+                <Button onClick={handleNext} icon={ArrowRight} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Continue
+                </Button>
+              ) : (
+                <Button onClick={handleSubmitRequest} disabled={submitting} icon={Send} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  {submitting ? 'Registering...' : 'Complete Registration'}
+                </Button>
+              )}
             </div>
+
           </div>
         </div>
       </div>

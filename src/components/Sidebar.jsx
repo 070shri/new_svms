@@ -10,6 +10,7 @@ import {
   LogOut,
   Building2,
   Bell,
+  Camera // ✅ 1. Imported Camera icon
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -25,6 +26,7 @@ const Sidebar = () => {
     { path: "/visitor-logs", icon: ClipboardList, label: "Visitor Logs" },
     { path: "/admin-notifications", icon: Bell, label: "Notifications" },
     { path: "/security-alerts", icon: Shield, label: "Security Alerts" },
+    { path: "/camera-management", icon: Camera, label: "Camera Management" }, // ✅ 2. Added Camera Management link
     { path: "/settings", icon: Settings, label: "Settings" },
   ];
 
